@@ -3,6 +3,8 @@ from time import time
 
 import torch
 
+
+
 X = torch.tensor([[1.0, 4.0, 7.0], [2.0, 3.0, 6.0]])
 X
 # %%
@@ -159,3 +161,80 @@ print(y_pred)
 # %%
 y_test[:3]
 # %% pytorch API
+import torch.nn as nn
+torch.manual_seed(53)
+model=nn.Linear(in_features=n_feature, out_features=1) # w, b initialized randomly
+model.bias
+model.weight
+model(X_train[:2])
+# %%
+optimizer=torch.optim.SGD(model.parameters(), lr=learning_rate)
+mse=nn.MSELoss()
+# %%
+def train_bgd(model, optimizer, criterion, X_train, y_train, n_epochs):
+    for epoch in range(n_epochs):
+        y_pred=model(X_train)
+        loss=criterion(y_pred, y_train)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item():.4f}")
+
+#%%
+# train the model
+train_bgd(model, optimizer, mse, X_train, y_train, n_epochs)
+# %%
+X_new=X_test[:3]
+with torch.no_grad():
+    y_pred=X_new@w+b
+print(y_pred)
+# %% MLX implementation
+import mlx.nn as mlxnn
+import mlx.optimizers as mlxopt
+import mlx.core as mlx
+
+# %%
+X_train_mlx=mlx.array(X_train)
+y_train_mlx=mlx.array(y_train)
+X_test_mlx=mlx.array(X_test)
+y_test_mlx=mlx.array(y_test)
+
+
+
+model_mlx=mlxnn.Linear(input_dims=n_feature, output_dims=1)
+optimizer_mlx=mlxopt.optimizers.SGD(learning_rate=learning_rate)
+mse_mlx=mlxnn.losses.mse_loss(y_test_mlx[:10], y_train_mlx[:10])
+
+
+"""
+
+
+def mlx_train_bgd(model, optimizer, loss_fn, X_train, y_train,n_epochs):
+    for epoch in range(n_epochs):
+        y_pred=model(X_train[:10])
+        # mse_mlx=loss_fn(y_pred, y_train[:10])
+        loss_grad_fn=mlxnn.value_and_grad(model, loss_fn)
+        loss, grad=loss_grad_fn(X_train[:10])
+        # optimizer.update(model, grad)
+        # print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item():.4f}")
+
+    return print( loss_grad_fn)
+
+mlx_train_bgd(model_mlx, optimizer_mlx, mlxnn.losses.mse_loss, X_train_mlx, y_train_mlx, n_epochs)
+"""
+# %%
+print(
+    model_mlx(X_train)
+)
+
+# %%
+def mlx_train_bgd(model, optimizer,  X_train, y_train, n_epochs):
+    for epoch in range(n_epochs):
+        y_pred=model(X_train_mlx)
+        loss_fn=mlxnn.losses.mse_loss(y_pred, y_train_mlx)
+        loss_grad_fn=mlxnn.value_and_grad()
+        loss, grad=loss_grad_fn(y_pred)
+        optimizer.update(model, grad)
+        print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item():.4f}")
+
+mlx_train_bgd(model_mlx, optimizer_mlx, X_train_mlx, y_train_mlx, n_epochs)
