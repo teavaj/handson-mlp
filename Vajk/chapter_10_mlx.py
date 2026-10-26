@@ -6,6 +6,7 @@ import mlx.optimizers as opt
 # %%
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
+from torch.ao.nn.intrinsic.modules import LinearReLU
 
 housing = fetch_california_housing()
 # %%
@@ -84,12 +85,42 @@ print(
     y_train.shape,  # ok
 )
 # %%
-for epoch in range(num_epochs):
-    tic = time.perf_counter()
-    # loss = loss_fn(model, X_train, y_train)
-    # optimizer.update(model)
-    step(X_train, y_train)
-    mlx.eval(model.state)
-    accu = eval_fn(X_test, y_test)
-    toc = time.perf_counter()
-    print(f"Epoch {epoch}: Test accuracy {accu.item():.3f}, Time {toc - tic:.3f} (s)")
+
+
+def linear_reg(
+    step_fn=step,
+    model=model,
+    X_train=X_train,
+    X_test=X_test,
+    y_train=y_train,
+    y_test=y_test,
+    num_epochs=num_epochs,
+):
+    for epoch in range(num_epochs):
+        tic = time.perf_counter()
+        # loss = loss_fn(model, X_train, y_train)
+        # optimizer.update(model)
+        step(X_train, y_train)
+        mlx.eval(model.state)
+        accu = eval_fn(X_test, y_test)
+        toc = time.perf_counter()
+        print(
+            f"Epoch {epoch}: Test accuracy {accu.item():.3f}, Time {toc - tic:.3f} (s)"
+        )
+
+
+linear_reg()
+
+# %% Regression MLP
+model = nn.Sequential(
+    nn.Linear(input_dims=n_feature, output_dims=50),
+    nn.ReLU(),
+    nn.Linear(input_dims=50, output_dims=40),
+    nn.ReLU(),
+    nn.Linear(input_dims=40, output_dims=1),
+)
+optimizer = opt.optimizers.SGD(learning_rate=0.1)
+lag = nn.value_and_grad(model, loss_fn)
+
+# %%
+linear_reg()

@@ -18,6 +18,7 @@ import numpy as np
 X.numpy()
 torch.tensor(np.array([[1.0, 4.0, 7.0], [2.0, 3.0, 6.0]]))
 torch.backends.mps.is_available()
+# %%
 X = X.to("mps")
 X.device
 # X.T #TypeError
@@ -188,53 +189,25 @@ X_new=X_test[:3]
 with torch.no_grad():
     y_pred=X_new@w+b
 print(y_pred)
-# %% MLX implementation
-import mlx.nn as mlxnn
-import mlx.optimizers as mlxopt
-import mlx.core as mlx
+# %% Regression MLP
 
-# %%
-X_train_mlx=mlx.array(X_train)
-y_train_mlx=mlx.array(y_train)
-X_test_mlx=mlx.array(X_test)
-y_test_mlx=mlx.array(y_test)
-
-
-
-model_mlx=mlxnn.Linear(input_dims=n_feature, output_dims=1)
-optimizer_mlx=mlxopt.optimizers.SGD(learning_rate=learning_rate)
-mse_mlx=mlxnn.losses.mse_loss(y_test_mlx[:10], y_train_mlx[:10])
-
-
-"""
-
-
-def mlx_train_bgd(model, optimizer, loss_fn, X_train, y_train,n_epochs):
-    for epoch in range(n_epochs):
-        y_pred=model(X_train[:10])
-        # mse_mlx=loss_fn(y_pred, y_train[:10])
-        loss_grad_fn=mlxnn.value_and_grad(model, loss_fn)
-        loss, grad=loss_grad_fn(X_train[:10])
-        # optimizer.update(model, grad)
-        # print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item():.4f}")
-
-    return print( loss_grad_fn)
-
-mlx_train_bgd(model_mlx, optimizer_mlx, mlxnn.losses.mse_loss, X_train_mlx, y_train_mlx, n_epochs)
-"""
-# %%
-print(
-    model_mlx(X_train)
+torch.manual_seed(524)
+model=nn.Sequential(
+    nn.Linear(n_feature,50), # (input, output)
+    # the output of one layer must     match the input of the next layer.
+    nn.ReLU(),
+    nn.Linear(50,40),
+    nn.ReLU(),
+    nn.Linear(40,1)
 )
-
+opt=torch.optim.SGD(model.parameters(), lr=learning_rate)
+mse=nn.MSELoss()
 # %%
-def mlx_train_bgd(model, optimizer,  X_train, y_train, n_epochs):
-    for epoch in range(n_epochs):
-        y_pred=model(X_train_mlx)
-        loss_fn=mlxnn.losses.mse_loss(y_pred, y_train_mlx)
-        loss_grad_fn=mlxnn.value_and_grad()
-        loss, grad=loss_grad_fn(y_pred)
-        optimizer.update(model, grad)
-        print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item():.4f}")
+train_bgd(model, opt, mse, X_train, y_train, n_epochs)
+# %% Mini-Batch GD
+from torch.utils.data import TensorDataset, DataLoader
 
-mlx_train_bgd(model_mlx, optimizer_mlx, X_train_mlx, y_train_mlx, n_epochs)
+train_dataset=TensorDataset(X_train, y_train)
+train_loader=DataLoader(train_dataset, batch_size=32, shuffle=True)
+# %%
+def train(model, optimizer, criterion, train_loader, n_epochs):
